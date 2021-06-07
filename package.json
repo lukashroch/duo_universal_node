@@ -10,16 +10,17 @@
   "license": "MIT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "source": "src/index.ts",
   "engines": {
-    "node": ">=12.22.1"
+    "node": ">= 10.0"
   },
   "files": [
-    "dist/"
+    "dist"
   ],
   "scripts": {
     "build": "rimraf dist && tsc --project tsconfig.build.json",
     "prepublishOnly": "npm run build",
-    "lint": "eslint --ext .js,.ts src/",
+    "lint": "eslint --ext .ts src/",
     "lint:fix": "npm run lint -- --fix",
     "test": "jest",
     "test:watch": "npm run test -- --watch"
