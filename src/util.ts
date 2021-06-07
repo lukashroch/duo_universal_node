@@ -9,3 +9,6 @@ export const generateRandomString = (length: number): string => {
 
   return result.join('');
 };
+
+export const getTimeInSeconds = (date = new Date(Date.now())): number =>
+  Math.round(date.getTime() / 1000);
