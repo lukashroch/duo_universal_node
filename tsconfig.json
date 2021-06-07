@@ -14,7 +14,9 @@
     "resolveJsonModule": true,
     "rootDir": ".",
     "types": [
-      "node"
+      "node",
+      "jest",
+      "jest-extended"
     ]
   },
   "include": [
