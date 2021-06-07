@@ -1,0 +1,13 @@
+{
+  "name": "@lukashroch/duo_universal_node",
+  "version": "1.0.0",
+  "description": "Node.js implementation of the Duo Universal SDK.",
+  "keywords": [
+    "duo",
+    "duo security"
+  ],
+  "author": "Lukas Hroch",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "scripts": {}
+}
