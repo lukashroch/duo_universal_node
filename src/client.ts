@@ -1,7 +1,10 @@
-import { URL } from 'url';
+import axios, { AxiosError, AxiosInstance } from 'axios';
+import jwt from 'jsonwebtoken';
+import { URL, URLSearchParams } from 'url';
 import * as constants from './constants';
 import { DuoException } from './duo-exception';
-import { generateRandomString } from './util';
+import { ClientPayload, HealthCheckRequest, HealthCheckResponse } from './http';
+import { generateRandomString, getTimeInSeconds } from './util';
 
 export type ClientOptions = {
   clientId: string;
@@ -30,6 +33,8 @@ export class Client {
 
   private useDuoCodeAttribute: boolean;
 
+  private axios: AxiosInstance;
+
   constructor(options: ClientOptions) {
     this.validateInitialConfig(options);
 
@@ -41,6 +46,11 @@ export class Client {
     this.baseURL = `https://${this.apiHost}`;
     this.redirectUrl = redirectUrl;
     this.useDuoCodeAttribute = useDuoCodeAttribute ?? true;
+
+    this.axios = axios.create({
+      baseURL: this.baseURL,
+      headers: { 'user-agent': constants.USER_AGENT },
+    });
   }
 
   /**
@@ -70,6 +80,47 @@ export class Client {
   }
 
   /**
+   * Retrieves exception message for DuoException from HTTPS result message.
+   *
+   * @private
+   * @param {*} result
+   * @returns {string}
+   * @memberof Client
+   */
+  private getExceptionFromResult(result: any): string {
+    const { message, message_detail, error, error_description } = result;
+
+    if (message && message_detail) return `${message}: ${message_detail}`;
+
+    if (error && error_description) return `${error}: ${error_description}`;
+
+    return constants.MALFORMED_RESPONSE;
+  }
+
+  /**
+   * Create client JWT payload
+   *
+   * @private
+   * @param {string} audience
+   * @returns {string}
+   * @memberof Client
+   */
+  private createJwtPayload(audience: string): string {
+    const timeInSecs = getTimeInSeconds();
+
+    const payload: ClientPayload = {
+      iss: this.clientId,
+      sub: this.clientId,
+      aud: audience,
+      jti: generateRandomString(constants.JTI_LENGTH),
+      iat: timeInSecs,
+      exp: timeInSecs + constants.JWT_EXPIRATION,
+    };
+
+    return jwt.sign(payload, this.clientSecret, { algorithm: constants.SIG_ALGORITHM });
+  }
+
+  /**
    * Generate a random hex string with a length of DEFAULT_STATE_LENGTH.
    *
    * @returns {string}
@@ -77,5 +128,38 @@ export class Client {
    */
   generateState(): string {
     return generateRandomString(constants.DEFAULT_STATE_LENGTH);
+  }
+
+  /**
+   * Makes a call to HEALTH_CHECK_ENDPOINT to see if Duo is available.
+   *
+   * @returns {Promise<HealthCheckResponse>}
+   * @memberof Client
+   */
+  async healthCheck(): Promise<HealthCheckResponse> {
+    const audience = `${this.baseURL}${this.HEALTH_CHECK_ENDPOINT}`;
+    const jwtPayload = this.createJwtPayload(audience);
+    const request: HealthCheckRequest = {
+      client_id: this.clientId,
+      client_assertion: jwtPayload,
+    };
+
+    try {
+      const { data } = await this.axios.post<HealthCheckResponse>(
+        this.HEALTH_CHECK_ENDPOINT,
+        new URLSearchParams(request)
+      );
+      const { stat } = data;
+
+      if (!stat || stat !== 'OK') throw new DuoException(this.getExceptionFromResult(data));
+
+      return data;
+    } catch (err) {
+      const error = err as DuoException | AxiosError;
+      if (error instanceof DuoException) throw error;
+
+      const data = error.response?.data;
+      throw new DuoException(data ? this.getExceptionFromResult(data) : error.message);
+    }
   }
 }
