@@ -3,7 +3,13 @@ import jwt from 'jsonwebtoken';
 import { URL, URLSearchParams } from 'url';
 import * as constants from './constants';
 import { DuoException } from './duo-exception';
-import { ClientPayload, HealthCheckRequest, HealthCheckResponse } from './http';
+import {
+  AuthorizationRequest,
+  AuthorizationRequestPayload,
+  ClientPayload,
+  HealthCheckRequest,
+  HealthCheckResponse,
+} from './http';
 import { generateRandomString, getTimeInSeconds } from './util';
 
 export type ClientOptions = {
@@ -161,5 +167,45 @@ export class Client {
       const data = error.response?.data;
       throw new DuoException(data ? this.getExceptionFromResult(data) : error.message);
     }
+  }
+
+  /**
+   * Generate URI to redirect to for the Duo prompt.
+   *
+   * @param {string} username
+   * @param {string} state
+   * @returns {string}
+   * @memberof Client
+   */
+  createAuthUrl(username: string, state: string): string {
+    if (state.length < constants.MIN_STATE_LENGTH || state.length > constants.MAX_STATE_LENGTH)
+      throw new DuoException(constants.DUO_STATE_ERROR);
+
+    const timeInSecs = getTimeInSeconds();
+
+    const payload: AuthorizationRequestPayload = {
+      response_type: 'code',
+      scope: 'openid',
+      exp: timeInSecs + constants.JWT_EXPIRATION,
+      client_id: this.clientId,
+      redirect_uri: this.redirectUrl,
+      state,
+      duo_uname: username,
+      iss: this.clientId,
+      aud: this.baseURL,
+      use_duo_code_attribute: this.useDuoCodeAttribute,
+    };
+
+    const request = jwt.sign(payload, this.clientSecret, { algorithm: constants.SIG_ALGORITHM });
+
+    const query: AuthorizationRequest = {
+      response_type: 'code',
+      client_id: this.clientId,
+      request: request,
+      redirect_uri: this.redirectUrl,
+      scope: 'openid',
+    };
+
+    return `${this.baseURL}${this.AUTHORIZE_ENDPOINT}?${new URLSearchParams(query).toString()}`;
   }
 }
