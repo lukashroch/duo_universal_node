@@ -1,5 +1,5 @@
 import axios, { AxiosError, AxiosInstance } from 'axios';
-import jwt from 'jsonwebtoken';
+import jwt, { JsonWebTokenError } from 'jsonwebtoken';
 import { URL, URLSearchParams } from 'url';
 import * as constants from './constants';
 import { DuoException } from './duo-exception';
@@ -9,6 +9,9 @@ import {
   ClientPayload,
   HealthCheckRequest,
   HealthCheckResponse,
+  TokenRequest,
+  TokenResponse,
+  TokenResponsePayload,
 } from './http';
 import { generateRandomString, getTimeInSeconds } from './util';
 
@@ -127,6 +130,29 @@ export class Client {
   }
 
   /**
+   * Verify JWT token
+   *
+   * @private
+   * @template T
+   * @param {string} token
+   * @returns {Promise<T>}
+   * @memberof Client
+   */
+  private async verifyToken<T>(token: string): Promise<T> {
+    return new Promise((resolve, reject) => {
+      jwt.verify(
+        token,
+        this.clientSecret,
+        { algorithms: [constants.SIG_ALGORITHM] },
+        (err, decoded) =>
+          err || !decoded
+            ? reject(err ?? new DuoException(constants.JWT_DECODE_ERROR))
+            : resolve(decoded as unknown as T)
+      );
+    });
+  }
+
+  /**
    * Generate a random hex string with a length of DEFAULT_STATE_LENGTH.
    *
    * @returns {string}
@@ -207,5 +233,80 @@ export class Client {
     };
 
     return `${this.baseURL}${this.AUTHORIZE_ENDPOINT}?${new URLSearchParams(query).toString()}`;
+  }
+
+  /**
+   * Exchange a code returned by Duo for a token that contains information about the authorization.
+   *
+   * @param {string} code
+   * @param {string} username
+   * @param {(string | null)} [nonce=null]
+   * @returns {Promise<TokenResponsePayload>}
+   * @memberof Client
+   */
+  async exchangeAuthorizationCodeFor2FAResult(
+    code: string,
+    username: string,
+    nonce: string | null = null
+  ): Promise<TokenResponsePayload> {
+    if (!code) throw new DuoException(constants.MISSING_CODE_ERROR);
+
+    if (!username) throw new DuoException(constants.USERNAME_ERROR);
+
+    const tokenEndpoint = `${this.baseURL}${this.TOKEN_ENDPOINT}`;
+    const jwtPayload = this.createJwtPayload(tokenEndpoint);
+
+    const request: TokenRequest = {
+      grant_type: constants.GRANT_TYPE,
+      code,
+      redirect_uri: this.redirectUrl,
+      client_id: this.clientId,
+      client_assertion_type: constants.CLIENT_ASSERTION_TYPE,
+      client_assertion: jwtPayload,
+    };
+
+    try {
+      const { data } = await this.axios.post<TokenResponse>(
+        this.TOKEN_ENDPOINT,
+        new URLSearchParams(request)
+      );
+
+      /* Verify that we are receiving the expected response from Duo */
+      const resultKeys = Object.keys(data);
+      const requiredKeys = ['id_token', 'access_token', 'expires_in', 'token_type'];
+
+      if (requiredKeys.some((key) => !resultKeys.includes(key)))
+        throw new DuoException(constants.MALFORMED_RESPONSE);
+
+      if (data.token_type !== 'Bearer') throw new DuoException(constants.MALFORMED_RESPONSE);
+
+      const token = await this.verifyToken<TokenResponsePayload>(data.id_token);
+
+      const tokenKeys = Object.keys(token);
+      const requiredTokenKeys = ['exp', 'iat', 'iss', 'aud'];
+
+      if (requiredTokenKeys.some((key) => !tokenKeys.includes(key)))
+        throw new DuoException(constants.MALFORMED_RESPONSE);
+
+      /* Verify we have all expected fields in our token */
+      if (token.iss !== tokenEndpoint || token.aud !== this.clientId)
+        throw new DuoException(constants.MALFORMED_RESPONSE);
+
+      if (!token.preferred_username || token.preferred_username !== username)
+        throw new DuoException(constants.USERNAME_ERROR);
+
+      if (nonce && (!token.nonce || token.nonce !== nonce))
+        throw new DuoException(constants.NONCE_ERROR);
+
+      return token;
+    } catch (err) {
+      const error = err as DuoException | JsonWebTokenError | AxiosError;
+      if (error instanceof DuoException) throw error;
+
+      if (error instanceof JsonWebTokenError) throw new DuoException(error.message);
+
+      const data = error.response?.data;
+      throw new DuoException(data ? this.getExceptionFromResult(data) : error.message);
+    }
   }
 }
