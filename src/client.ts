@@ -191,7 +191,7 @@ export class Client {
       if (error instanceof DuoException) throw error;
 
       const data = error.response?.data;
-      throw new DuoException(data ? this.getExceptionFromResult(data) : error.message);
+      throw new DuoException(data ? this.getExceptionFromResult(data) : error.message, error);
     }
   }
 
@@ -303,10 +303,10 @@ export class Client {
       const error = err as DuoException | JsonWebTokenError | AxiosError;
       if (error instanceof DuoException) throw error;
 
-      if (error instanceof JsonWebTokenError) throw new DuoException(error.message);
+      if (error instanceof JsonWebTokenError) throw new DuoException(error.message, error);
 
       const data = error.response?.data;
-      throw new DuoException(data ? this.getExceptionFromResult(data) : error.message);
+      throw new DuoException(data ? this.getExceptionFromResult(data) : error.message, error);
     }
   }
 }
