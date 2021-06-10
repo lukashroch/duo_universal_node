@@ -37,7 +37,9 @@ describe('Authentication URL', () => {
     }).toThrowWithMessage(DuoException, constants.DUO_STATE_ERROR);
   });
 
-  it('should create correct authentication URL', () => {
+  it(`should create correct authentication URL (default 'useDuoCodeAttribute')`, () => {
+    expect.assertions(7);
+
     const client = new Client(clientOps);
     const state = client.generateState();
 
@@ -55,9 +57,37 @@ describe('Authentication URL', () => {
 
     expect(request).not.toBe(null);
     if (request) {
-      expect(() => {
-        jwt.verify(request, clientOps.clientSecret, { algorithms: [constants.SIG_ALGORITHM] });
-      }).not.toThrow();
+      const token = jwt.verify(request, clientOps.clientSecret, {
+        algorithms: [constants.SIG_ALGORITHM],
+      });
+      expect((token as any).use_duo_code_attribute).toBe(true);
+    }
+  });
+
+  it(`should create correct authentication URL (explicit 'useDuoCodeAttribute')`, () => {
+    expect.assertions(7);
+
+    const client = new Client({ ...clientOps, useDuoCodeAttribute: false });
+    const state = client.generateState();
+
+    const { host, protocol, pathname, searchParams } = new URL(
+      client.createAuthUrl(username, state)
+    );
+    const request = searchParams.get('request');
+
+    expect(host).toBe(clientOps.apiHost);
+    expect(protocol).toBe('https:');
+    expect(pathname).toBe(client.AUTHORIZE_ENDPOINT);
+
+    expect(searchParams.get('client_id')).toBe(clientOps.clientId);
+    expect(searchParams.get('redirect_uri')).toBe(clientOps.redirectUrl);
+
+    expect(request).not.toBe(null);
+    if (request) {
+      const token = jwt.verify(request, clientOps.clientSecret, {
+        algorithms: [constants.SIG_ALGORITHM],
+      });
+      expect((token as any).use_duo_code_attribute).toBe(false);
     }
   });
 });

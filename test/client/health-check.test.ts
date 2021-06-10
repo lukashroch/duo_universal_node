@@ -16,6 +16,10 @@ const healthCheckFailedHttpRequest = {
   stat: 'FAIL',
   timestamp: util.getTimeInSeconds(),
 };
+const healthCheckHttpErrorResponse = {
+  error: 'invalid_client',
+  error_description: 'Failed to verify signature.',
+};
 const healthCheckMissingStatRequest = { response: { timestamp: util.getTimeInSeconds() } };
 const healthCheckMissingMessageRequest = { stat: 'FAIL' };
 
@@ -27,12 +31,55 @@ describe('Health check', () => {
     mockedAxios.create.mockReturnThis();
   });
 
-  it('should thrown when failed', async () => {
+  it('should thrown when request returned failed result', async () => {
     const client = new Client(clientOps);
     const response = { data: healthCheckFailedHttpRequest };
     mockedAxios.post.mockResolvedValue(response);
 
     await expect(client.healthCheck()).rejects.toBeInstanceOf(DuoException);
+    expect(mockedAxios.post).toHaveBeenCalledTimes(1);
+  });
+
+  it('should thrown when http request failed (includes data)', async () => {
+    expect.assertions(3);
+    const client = new Client(clientOps);
+    const response = { data: healthCheckHttpErrorResponse };
+    mockedAxios.post.mockImplementation(() => Promise.reject({ response }));
+
+    try {
+      await client.healthCheck();
+    } catch (err) {
+      expect(err).toBeInstanceOf(DuoException);
+      expect(err.inner).toBeDefined();
+    }
+    expect(mockedAxios.post).toHaveBeenCalledTimes(1);
+  });
+
+  it('should thrown when http request failed (missing data)', async () => {
+    expect.assertions(3);
+    const client = new Client(clientOps);
+    mockedAxios.post.mockImplementation(() => Promise.reject({ response: {} }));
+
+    try {
+      await client.healthCheck();
+    } catch (err) {
+      expect(err).toBeInstanceOf(DuoException);
+      expect(err.inner).toBeDefined();
+    }
+    expect(mockedAxios.post).toHaveBeenCalledTimes(1);
+  });
+
+  it('should thrown when http request failed (missing response)', async () => {
+    expect.assertions(3);
+    const client = new Client(clientOps);
+    mockedAxios.post.mockImplementation(() => Promise.reject({}));
+
+    try {
+      await client.healthCheck();
+    } catch (err) {
+      expect(err).toBeInstanceOf(DuoException);
+      expect(err.inner).toBeDefined();
+    }
     expect(mockedAxios.post).toHaveBeenCalledTimes(1);
   });
 
