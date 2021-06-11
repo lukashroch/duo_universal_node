@@ -30,4 +30,7 @@ jobs:
       - name: Run build
         run: npm run build
       - name: Run tests
-        run: npm run test
+        run: npm run test:coverage
+      - name: Code coverage
+        if: ${{ matrix.node-version == '14.x' }}
+        uses: codecov/codecov-action@v1
