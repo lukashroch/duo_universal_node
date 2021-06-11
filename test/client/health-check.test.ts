@@ -27,12 +27,15 @@ jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('Health check', () => {
+  let client: Client;
+
   beforeAll(() => {
     mockedAxios.create.mockReturnThis();
+
+    client = new Client(clientOps);
   });
 
   it('should thrown when request returned failed result', async () => {
-    const client = new Client(clientOps);
     const response = { data: healthCheckFailedHttpRequest };
     mockedAxios.post.mockResolvedValue(response);
 
@@ -42,7 +45,6 @@ describe('Health check', () => {
 
   it('should thrown when http request failed (includes data)', async () => {
     expect.assertions(3);
-    const client = new Client(clientOps);
     const response = { data: healthCheckHttpErrorResponse };
     mockedAxios.post.mockImplementation(() => Promise.reject({ response }));
 
@@ -57,7 +59,6 @@ describe('Health check', () => {
 
   it('should thrown when http request failed (missing data)', async () => {
     expect.assertions(3);
-    const client = new Client(clientOps);
     mockedAxios.post.mockImplementation(() => Promise.reject({ response: {} }));
 
     try {
@@ -71,7 +72,6 @@ describe('Health check', () => {
 
   it('should thrown when http request failed (missing response)', async () => {
     expect.assertions(3);
-    const client = new Client(clientOps);
     mockedAxios.post.mockImplementation(() => Promise.reject({}));
 
     try {
@@ -84,7 +84,6 @@ describe('Health check', () => {
   });
 
   it('should thrown with missing response data #1', async () => {
-    const client = new Client(clientOps);
     const response = { data: healthCheckMissingMessageRequest };
     mockedAxios.post.mockResolvedValue(response);
 
@@ -93,7 +92,6 @@ describe('Health check', () => {
   });
 
   it('should thrown with missing response data #2', async () => {
-    const client = new Client(clientOps);
     const response = { data: healthCheckMissingStatRequest };
     mockedAxios.post.mockResolvedValue(response);
 
@@ -102,7 +100,6 @@ describe('Health check', () => {
   });
 
   it('should return correct health check response', async () => {
-    const client = new Client(clientOps);
     const response = { data: healthCheckGoodHttpRequest };
     mockedAxios.post.mockResolvedValue(response);
 
