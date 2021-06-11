@@ -143,7 +143,7 @@ export class Client {
       jwt.verify(
         token,
         this.clientSecret,
-        { algorithms: [constants.SIG_ALGORITHM] },
+        { algorithms: [constants.SIG_ALGORITHM], clockTolerance: constants.JWT_LEEWAY },
         (err, decoded) =>
           err || !decoded
             ? reject(err ?? new DuoException(constants.JWT_DECODE_ERROR))
