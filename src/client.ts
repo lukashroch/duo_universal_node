@@ -1,5 +1,5 @@
 import axios, { AxiosError, AxiosInstance } from 'axios';
-import jwt, { JsonWebTokenError } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import { URL, URLSearchParams } from 'url';
 import * as constants from './constants';
 import { DuoException } from './duo-exception';
@@ -146,10 +146,26 @@ export class Client {
         { algorithms: [constants.SIG_ALGORITHM], clockTolerance: constants.JWT_LEEWAY },
         (err, decoded) =>
           err || !decoded
-            ? reject(err ?? new DuoException(constants.JWT_DECODE_ERROR))
+            ? reject(new DuoException(constants.JWT_DECODE_ERROR, err))
             : resolve(decoded as unknown as T)
       );
     });
+  }
+
+  /**
+   * Error handler to throw relevant error
+   *
+   * @private
+   * @param {(DuoException | AxiosError)} err
+   * @returns {never}
+   * @memberof Client
+   */
+  private handleErrorResponse(err: DuoException | AxiosError): never {
+    const error = err as DuoException | AxiosError;
+    if (error instanceof DuoException) throw error;
+
+    const data = error.response?.data;
+    throw new DuoException(data ? this.getExceptionFromResult(data) : error.message, error);
   }
 
   /**
@@ -187,11 +203,7 @@ export class Client {
 
       return data;
     } catch (err) {
-      const error = err as DuoException | AxiosError;
-      if (error instanceof DuoException) throw error;
-
-      const data = error.response?.data;
-      throw new DuoException(data ? this.getExceptionFromResult(data) : error.message, error);
+      this.handleErrorResponse(err);
     }
   }
 
@@ -289,8 +301,9 @@ export class Client {
         throw new DuoException(constants.MALFORMED_RESPONSE);
 
       /* Verify we have all expected fields in our token */
-      if (token.iss !== tokenEndpoint || token.aud !== this.clientId)
-        throw new DuoException(constants.MALFORMED_RESPONSE);
+      if (token.iss !== tokenEndpoint) throw new DuoException(constants.MALFORMED_RESPONSE);
+
+      if (token.aud !== this.clientId) throw new DuoException(constants.MALFORMED_RESPONSE);
 
       if (!token.preferred_username || token.preferred_username !== username)
         throw new DuoException(constants.USERNAME_ERROR);
@@ -300,13 +313,7 @@ export class Client {
 
       return token;
     } catch (err) {
-      const error = err as DuoException | JsonWebTokenError | AxiosError;
-      if (error instanceof DuoException) throw error;
-
-      if (error instanceof JsonWebTokenError) throw new DuoException(error.message, error);
-
-      const data = error.response?.data;
-      throw new DuoException(data ? this.getExceptionFromResult(data) : error.message, error);
+      this.handleErrorResponse(err);
     }
   }
 }

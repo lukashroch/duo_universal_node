@@ -1,7 +1,7 @@
 export class DuoException extends Error {
   inner?: Error;
 
-  constructor(message: string, error?: Error) {
+  constructor(message: string, error?: Error | null) {
     super(message);
 
     this.name = 'DuoException';
