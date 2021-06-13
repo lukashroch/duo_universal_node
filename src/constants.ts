@@ -1,4 +1,6 @@
-import pkg from '../package.json';
+import fs from 'fs';
+
+const pkg = JSON.parse(fs.readFileSync('package.json', { encoding: 'utf-8' }));
 
 export const CLIENT_ID_LENGTH = 20;
 export const CLIENT_SECRET_LENGTH = 40;
