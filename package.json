@@ -1,5 +1,5 @@
 {
-  "name": "@lukashroch/duo_universal_node",
+  "name": "duo_universal",
   "version": "1.0.0",
   "description": "Node.js implementation of the Duo Universal SDK.",
   "keywords": [
@@ -23,8 +23,8 @@
     "lint": "eslint --ext .ts src/",
     "lint:fix": "npm run lint -- --fix",
     "test": "jest",
-    "test:watch": "npm run test -- --watch",
-    "test:coverage": "npm run test -- --coverage"
+    "test:coverage": "npm run test -- --coverage",
+    "test:watch": "npm run test -- --watch"
   },
   "dependencies": {
     "axios": "^0.21.1",
@@ -33,7 +33,7 @@
   "devDependencies": {
     "@types/jest": "^26.0.23",
     "@types/jsonwebtoken": "^8.5.1",
-    "@types/node": "^15.12.1",
+    "@types/node": "^15.12.2",
     "@typescript-eslint/eslint-plugin": "^4.26.1",
     "@typescript-eslint/parser": "^4.26.1",
     "eslint": "^7.28.0",

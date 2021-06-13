@@ -9,12 +9,6 @@ Clone the repository
 git clone https://github.com/lukashroch/duo_universal_nodejs.git
 ```
 
-Build the repo & Link the repository (temporary, it's not yet published in NPM registry)
-```
-npm run build
-npm link
-```
-
 Navigate to example folder
 ```
 cd duo_universal_nodejs/example
