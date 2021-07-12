@@ -8,6 +8,11 @@
   ],
   "author": "Lukas Hroch",
   "license": "MIT",
+  "homepage": "https://github.com/lukashroch/duo_universal_nodejs#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lukashroch/duo_universal_nodejs.git"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "source": "src/index.ts",
