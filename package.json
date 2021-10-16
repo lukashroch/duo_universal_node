@@ -1,6 +1,6 @@
 {
   "name": "duo_universal",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "Node.js implementation of the Duo Universal SDK.",
   "keywords": [
     "duo",
