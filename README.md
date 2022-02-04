@@ -10,6 +10,32 @@ Duo Web v4 SDK - Duo Universal Prompt implementation for Node.js
 - follows [Duo Web v4 SDK](https://duo.com/docs/duoweb) implementation
 - largely based on Duo Web v4 SDKs for [other languages](https://github.com/duosecurity)
 
+## ⚠️ IMPORTANT ⚠️
+
+This package is no longer maintained. [Duo team](https://github.com/duosecurity) has taken over the code and from now on will be maintaining official implementation of Duo Universal prompt.
+
+New Duo Universal Node.js repository is https://github.com/duosecurity/duo_universal_nodejs.
+
+Upgrade is a drop-in replacement.
+
+1. Replace package
+
+```sh 
+npm remove duo_universal
+
+npm install @duosecurity/duo_universal
+```
+
+2. Change import statements
+
+```ts
+// from
+import { Client } from 'duo_universal';
+
+// to
+import { Client } from '@duosecurity/duo_universal';
+```
+
 ## Installation
 
 ```
